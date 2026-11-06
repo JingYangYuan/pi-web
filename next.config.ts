@@ -16,14 +16,20 @@ try {
 // swaps it for an equivalent built at runtime; both bundlers must run it.
 const gfmAutolinkEmailLoader = join(configDir, "lib/gfm-autolink-email-loader.cjs");
 
+// The upload route enforces the per-user limit from the hub-authored limits
+// file; this buffer is the hard ceiling (128 MB by default) plus multipart
+// overhead, so one shared value covers every sandbox.
+const maxUploadTotalBytes = Number(process.env.PI_WEB_MAX_UPLOAD_TOTAL_BYTES ?? 128 * 1024 * 1024);
+const proxyBodyLimitMb = Math.max(16, Math.ceil(maxUploadTotalBytes / (1024 * 1024)) + 8);
+
 const nextConfig: NextConfig = {
   outputFileTracingRoot: configDir,
   experimental: {
     // proxy.ts matches /api/:path*, and Next buffers the request body whenever
     // a proxy is present, capped at 10 MB by default. The upload route accepts
-    // up to 100 MB per request, so raise the buffer above that or large uploads
-    // are truncated and fail with "Failed to parse body as FormData."
-    proxyClientMaxBodySize: "128mb",
+    // up to the hub limit, so raise the buffer above it or large uploads are
+    // truncated and fail with "Failed to parse body as FormData."
+    proxyClientMaxBodySize: `${proxyBodyLimitMb}mb`,
   },
   // next/image is only used for the static logo, so the /_next/image optimizer
   // (and its sharp/libheif attack surface, see GHSA-2xp9-vwfh-vxw4) is not needed.
