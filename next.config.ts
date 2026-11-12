@@ -17,7 +17,7 @@ try {
 const gfmAutolinkEmailLoader = join(configDir, "lib/gfm-autolink-email-loader.cjs");
 
 // The upload route enforces the per-user limit from the hub-authored limits
-// file; this buffer is the hard ceiling (128 MB by default) plus multipart
+// file; this buffer is the hard ceiling (256 MB by default) plus multipart
 // overhead, so one shared value covers every sandbox.
 const maxUploadTotalBytes = Number(process.env.PI_WEB_MAX_UPLOAD_TOTAL_BYTES ?? 128 * 1024 * 1024);
 const proxyBodyLimitMb = Math.max(16, Math.ceil(maxUploadTotalBytes / (1024 * 1024)) + 8);

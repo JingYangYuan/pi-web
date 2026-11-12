@@ -204,3 +204,38 @@ test("enabling keeps an entry's own settings such as autoload", async () => {
 
   assert.deepEqual(await readPackages(), [{ source: alpha, autoload: false }, { source: beta, autoload: false }]);
 });
+
+test("a package the hub installed is marked and cannot be removed or updated here", async () => {
+  const managed = await makePackage("hub-managed");
+  const own = await makePackage("own-package");
+  await writeFile(settingsPath, JSON.stringify({
+    packages: [managed, own],
+    pihubPackages: [managed],
+  }));
+
+  const listed = await (await GET(new Request(`http://localhost/api/plugins?cwd=${encodeURIComponent(cwd)}`))).json();
+  const markBySource = Object.fromEntries(listed.packages.map((pkg) => [pkg.source, pkg.managedByHub]));
+  assert.deepEqual(markBySource, { [managed]: true, [own]: false });
+
+  // The broker regenerates settings.json and keeps only what it recorded, so a
+  // removal taken here would leave the package configured but not installed.
+  for (const action of ["remove", "update"]) {
+    const response = await postPlugins({ action, source: managed, scope: "global" });
+    const body = await response.json();
+    assert.equal(response.status, 403, `${action} must be refused`);
+    assert.equal(body.reason, "hub-managed");
+  }
+  assert.deepEqual(await readPackages(), [managed, own]);
+});
+
+test("a package the account installed itself can still be removed", async () => {
+  const own = await makePackage("own-package");
+  await writeFile(settingsPath, JSON.stringify({ packages: [own], pihubPackages: [] }));
+
+  const response = await postPlugins({ action: "remove", source: own, scope: "global" });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await readPackages(), []);
+  const body = await response.json();
+  assert.deepEqual(body.packages, []);
+});

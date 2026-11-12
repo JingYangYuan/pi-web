@@ -322,7 +322,7 @@ function AddPluginPanel({
   );
 }
 
-function PackageDetail({
+export function PackageDetail({
   pkg,
   cwd,
   busyKey,
@@ -354,10 +354,14 @@ function PackageDetail({
   const busy = (busyKey?.endsWith(key) || busyKey?.startsWith("bulk:")) ?? false;
   const reloadBusy = busyKey === "reload";
   const enabled = !pkg.disabled;
+  // The hub's admin installed and owns this one; the account still decides
+  // whether it loads, which is what the switch beside them does.
+  const managedByHub = pkg.managedByHub;
   const canCheckForUpdates = pkg.canCheckForUpdates;
   const updateAvailable = updateStatus?.state === "update-available";
   const description = pkg.description?.trim();
   const reloadReasonId = useId();
+  const managedNoteId = useId();
 
   return (
     <ConfigDetailStack>
@@ -390,6 +394,19 @@ function PackageDetail({
                 {t("i18n.filtered")}
               </span>
             )}
+            {managedByHub && (
+              <span
+                style={{
+                  fontSize: 10,
+                  padding: "1px 5px",
+                  borderRadius: 3,
+                  background: "rgba(99,102,241,0.12)",
+                  color: "rgba(99,102,241,0.9)",
+                }}
+              >
+                {t("plugins.hubManaged")}
+              </span>
+            )}
             <span
               style={{
                 fontFamily: "var(--font-mono)",
@@ -405,23 +422,25 @@ function PackageDetail({
           </ConfigDetailHeaderInfo>
 
           <ConfigDetailActions>
-            <ConfigButton
-              size="small"
-              variant={updateAvailable ? "primary" : undefined}
-              onClick={updateAvailable || !canCheckForUpdates
-                ? () => onAction("update", pkg)
-                : onCheckUpdate}
-              disabled={busy || reloadBusy || checkingUpdate}
-              title={updateAvailable ? t("i18n.updateAvailable") : undefined}
-            >
-               {busyKey === `update:${key}`
-                 ? t("i18n.updating")
-                 : checkingUpdate
-                   ? t("i18n.checking")
-                   : updateAvailable || !canCheckForUpdates
-                     ? t("i18n.update")
-                     : t("i18n.check")}
-            </ConfigButton>
+            {!managedByHub && (
+              <ConfigButton
+                size="small"
+                variant={updateAvailable ? "primary" : undefined}
+                onClick={updateAvailable || !canCheckForUpdates
+                  ? () => onAction("update", pkg)
+                  : onCheckUpdate}
+                disabled={busy || reloadBusy || checkingUpdate}
+                title={updateAvailable ? t("i18n.updateAvailable") : undefined}
+              >
+                 {busyKey === `update:${key}`
+                   ? t("i18n.updating")
+                   : checkingUpdate
+                     ? t("i18n.checking")
+                     : updateAvailable || !canCheckForUpdates
+                       ? t("i18n.update")
+                       : t("i18n.check")}
+              </ConfigButton>
+            )}
             <ConfigButton
               size="small"
               onClick={onReloadSession}
@@ -430,22 +449,30 @@ function PackageDetail({
             >
                {reloadBusy ? t("i18n.reloading") : t("i18n.reloadSession")}
             </ConfigButton>
-            <ConfigButton
-              variant="danger"
-              size="small"
-              onClick={() => onAction("remove", pkg)}
-              disabled={busy || reloadBusy}
-            >
-               {busyKey === `remove:${key}` ? t("i18n.removing") : t("i18n.remove")}
-            </ConfigButton>
+            {!managedByHub && (
+              <ConfigButton
+                variant="danger"
+                size="small"
+                onClick={() => onAction("remove", pkg)}
+                disabled={busy || reloadBusy}
+              >
+                 {busyKey === `remove:${key}` ? t("i18n.removing") : t("i18n.remove")}
+              </ConfigButton>
+            )}
             <ConfigSwitch
               checked={enabled}
               loading={busy || reloadBusy}
               onChange={() => onAction(pkg.disabled ? "enable" : "disable", pkg)}
               label={pkg.disabled ? t("i18n.enablePackage") : t("i18n.disablePackage")}
+              describedBy={managedByHub ? managedNoteId : undefined}
             />
           </ConfigDetailActions>
         </ConfigDetailHeader>
+        {managedByHub && (
+          <div id={managedNoteId} className="config-detail-heading-note">
+            {t("plugins.hubManagedNote")}
+          </div>
+        )}
         {!sessionId && (
           <div id={reloadReasonId} className="config-detail-heading-note">
             {t("i18n.openSessionToReload")}

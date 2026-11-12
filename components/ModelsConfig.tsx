@@ -65,6 +65,7 @@ import {
   type EnabledModelsController,
 } from "./EnabledModelsSection";
 import { providerBadgeLabel } from "./enabled-models-helpers";
+import { DefaultModelSection } from "./DefaultModelSection";
 import { OAuthPastePanel } from "./OAuthPastePanel";
 import { ProviderIcon } from "./ProviderIcon";
 import { ProviderUsageSummary } from "./ProviderUsageSummary";
@@ -2321,6 +2322,10 @@ export function ModelsConfig({ onClose, embedded = false, cwd = null }: {
     <ConfigPanelShell embedded={embedded} title={t("common.models")} subtitle="~/.pi/agent/models.json" closeLabel={t("i18n.close")} onClose={onClose}>
 
         <EnabledModelsBanner controller={enabledModels} />
+
+        {/* What a new chat starts with; the panel below edits models.json and
+            the scope, never this saved default. */}
+        <DefaultModelSection cwd={cwd} />
 
         {/* Body */}
         <ConfigSplitView>

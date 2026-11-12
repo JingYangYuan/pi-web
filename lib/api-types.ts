@@ -870,6 +870,8 @@ export interface PluginUpdateResult {
 export interface PluginPackageInfo {
   source: string;
   scope: PluginScope;
+  /** A global source the hub installed (`pihubPackages`): only its admin may remove or update it. */
+  managedByHub: boolean;
   canCheckForUpdates: boolean;
   filtered: boolean;
   disabled: boolean;

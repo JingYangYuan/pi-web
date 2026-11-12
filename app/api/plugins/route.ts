@@ -12,6 +12,7 @@ import {
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "@/lib/file-access";
 import { hasJsonContentType, isApiRequestAllowed } from "@/lib/request-security";
 import { getProjectTrustStatus } from "@/lib/project-trust";
+import { hubManagedSources } from "@/lib/hub-managed-packages";
 import { isPluginSourceCheckable } from "@/lib/plugin-updates";
 import { invalidateModelRuntimeWithExtensions } from "@/lib/model-runtime";
 import type {
@@ -335,6 +336,7 @@ async function readPlugins(cwd: string): Promise<PluginsResponse> {
   });
 
   const diagnostics: PluginDiagnostic[] = [];
+  const managedSources = hubManagedSources();
   let countsByPackage = new Map<string, PluginResourceCounts>();
   let resourcesByPackage = new Map<string, PluginResourceInfo[]>();
   let standaloneExtensions: PluginStandaloneExtensionInfo[] = [];
@@ -376,6 +378,9 @@ async function readPlugins(cwd: string): Promise<PluginsResponse> {
     return {
       source: pkg.source,
       scope,
+      // The hub owns the global package list: those entries are the admin's,
+      // and removing or updating one here would undo the next sync anyway.
+      managedByHub: scope === "global" && managedSources.has(pkg.source),
       canCheckForUpdates: isPluginSourceCheckable(pkg.source),
       filtered: pkg.filtered,
       disabled,
@@ -482,6 +487,19 @@ export async function POST(req: Request) {
     });
     const source = body.source?.trim();
     const local = scope === "project";
+
+    // Hub-managed packages belong to the administrator: the hub regenerates
+    // this settings.json on every sync and keeps only what it recorded in
+    // `pihubPackages`, so an uninstall taken here would come back as a
+    // configured package whose module is gone. A source-less update stays
+    // allowed: it refreshes what is installed and removes nothing.
+    if ((body.action === "remove" || body.action === "update") && source && !local
+      && hubManagedSources().has(source)) {
+      return NextResponse.json({
+        error: `Hub-managed package: only the administrator can remove or update ${source}.`,
+        reason: "hub-managed",
+      }, { status: 403 });
+    }
 
     if (body.action === "install") {
       if (!source) return NextResponse.json({ error: "source required" }, { status: 400 });

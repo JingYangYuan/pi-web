@@ -1,13 +1,10 @@
 import { join } from "path";
-import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { SettingsManager } from "@earendil-works/pi-coding-agent";
 import { displaySettingsPath } from "./enabled-models-runtime";
+import { isThinkingLevel } from "./thinking-levels";
+import type { ThinkingLevel } from "./thinking-levels";
 
-const THINKING_LEVELS = new Set<ThinkingLevel>(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
-
-export function isThinkingLevel(value: unknown): value is ThinkingLevel {
-  return typeof value === "string" && THINKING_LEVELS.has(value as ThinkingLevel);
-}
+export { isThinkingLevel };
 
 /** What the model and reasoning selectors' "save as default" action writes. */
 export interface DefaultPreferencesEdit {
